@@ -59,14 +59,11 @@ class ModelEvaluator:
         if vectorizer is not None:
             X_test = vectorizer.transform(X_test)
 
-        # Преобразование меток в числа (если они строковые)
         if y_test.dtype == "object":
             y_test = np.where(y_test == "spam", 1, 0)
 
-        # Предсказания модели
         predictions = model.predict(X_test)
 
-        # Преобразование предсказаний в числа, если они строковые
         if isinstance(predictions[0], str):
             predictions = np.where(predictions == "spam", 1, 0)
 
@@ -76,7 +73,6 @@ class ModelEvaluator:
             else None
         )
 
-        # Вычисление метрик
         accuracy = accuracy_score(y_test, predictions)
         balanced_acc = balanced_accuracy_score(y_test, predictions)
         precision = precision_score(y_test, predictions, average=average)
@@ -88,7 +84,6 @@ class ModelEvaluator:
             else None
         )
 
-        # Метрики в виде pandas DataFrame
         metrics_df = pd.DataFrame(
             {
                 "Metric": [
@@ -104,7 +99,6 @@ class ModelEvaluator:
         )
         display(metrics_df)
 
-        # Матрица ошибок
         cm = confusion_matrix(y_test, predictions)
         plt.figure(figsize=(6, 4))
         sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", cbar=False)
@@ -113,7 +107,6 @@ class ModelEvaluator:
         plt.xlabel("Predicted Label")
         plt.show()
 
-        # ROC-кривая
         if pred_probabilities is not None:
             fpr, tpr, _ = roc_curve(y_test, pred_probabilities)
             plt.figure(figsize=(8, 6))
@@ -157,13 +150,7 @@ class ModelEvaluator:
         print(help_text)
 
     def compare_models(
-        self,
-        models,
-        test_data,
-        y_test,
-        vectorizers=None,
-        average="weighted",
-        show_help=False,
+        self, models, test_data, y_test, show_help=False, average="weighted", n_cols=3
     ):
         """
         Метод для сравнения производительности нескольких моделей по метрикам.
@@ -173,15 +160,15 @@ class ModelEvaluator:
         models : dict
             Словарь, где ключ — название модели (str), а значение — обученная модель.
         test_data : dict
-            Словарь с тестовыми данными для каждой модели.
+            Словарь, где ключ — название модели (str), а значение — данные для тестирования модели (обработанные BoW, TF-IDF или эмбеддинги).
         y_test : list или np.array
             Истинные метки для тестовых данных.
-        vectorizers : dict, optional
-            Словарь с векторизаторами для каждой модели.
-        average : str
-            Средний параметр для расчёта метрик (по умолчанию 'weighted' для многоклассовых задач).
         show_help : bool
             Флаг для отображения блока с описанием метрик (по умолчанию False).
+        average : str
+            Средний параметр для расчёта метрик (по умолчанию 'weighted' для многоклассовых задач).
+        n_cols : int
+            Количество графиков в строке для отображения метрик (по умолчанию 3).
 
         Returns:
         --------
@@ -189,47 +176,25 @@ class ModelEvaluator:
             Таблица с метриками для каждой модели.
         """
         results = {}
+        roc_curves = {}
 
-        # Преобразование меток в числа
         if y_test.dtype == "object":
             y_test = np.where(y_test == "spam", 1, 0)
 
         for model_name, model in models.items():
-            print(f"\nProcessing model: {model_name}")
+            X_test_transformed = test_data[model_name]
 
-            # Получаем соответствующий тестовый набор для модели
-            X_test = test_data.get(model_name)
-
-            # Получаем векторизатор для модели, если он используется
-            vectorizer = None if vectorizers is None else vectorizers.get(model_name)
-
-            # Логируем размер данных до преобразования
-            print(f"Shape of input data for model '{model_name}': {X_test.shape}")
-
-            if vectorizer is not None:
-                # Если используется векторизатор, применяем его к тестовым данным
-                X_test_transformed = vectorizer.transform(X_test)
-                print(
-                    f"Shape of vectorized data for model '{model_name}': {X_test_transformed.shape}"
-                )
-            else:
-                # Если используются эмбеддинги, просто используем данные напрямую
-                X_test_transformed = X_test
-                print(
-                    f"Shape of embeddings data for model '{model_name}': {X_test_transformed.shape}"
-                )
-
-            # Получаем предсказания модели
             predictions = model.predict(X_test_transformed)
 
-            # Если модель поддерживает predict_proba, получаем вероятности
+            if isinstance(predictions[0], str):
+                predictions = np.where(predictions == "spam", 1, 0)
+
             pred_probabilities = (
                 model.predict_proba(X_test_transformed)[:, 1]
                 if hasattr(model, "predict_proba")
                 else None
             )
 
-            # Вычисляем метрики
             accuracy = accuracy_score(y_test, predictions)
             balanced_acc = balanced_accuracy_score(y_test, predictions)
             precision = precision_score(y_test, predictions, average=average)
@@ -241,7 +206,6 @@ class ModelEvaluator:
                 else None
             )
 
-            # Сохраняем результаты для каждой модели
             results[model_name] = {
                 "Accuracy": accuracy,
                 "Balanced Accuracy": balanced_acc,
@@ -251,11 +215,54 @@ class ModelEvaluator:
                 "ROC-AUC": roc_auc,
             }
 
-        # Преобразуем результаты в pandas DataFrame для удобного отображения
+            if pred_probabilities is not None:
+                fpr, tpr, _ = roc_curve(y_test, pred_probabilities)
+                roc_curves[model_name] = (fpr, tpr, roc_auc)
+
         results_df = pd.DataFrame(results).transpose()
         display(results_df)
 
         if show_help:
             self.display_help()
 
-        return results_df
+        metrics = [
+            "Accuracy",
+            "Balanced Accuracy",
+            "Precision",
+            "Recall",
+            "F1 Score",
+            "ROC-AUC",
+        ]
+
+        num_metrics = len(metrics)
+        n_rows = (num_metrics + n_cols - 1) // n_cols
+
+        fig, axes = plt.subplots(n_rows, n_cols, figsize=(n_cols * 5, n_rows * 4))
+        axes = axes.flatten()
+
+        for i, metric in enumerate(metrics):
+            values = [
+                results[model_name][metric]
+                for model_name in results
+                if results[model_name][metric] is not None
+            ]
+            axes[i].bar(results.keys(), values)
+            axes[i].set_title(f"Сравнение моделей по {metric}")
+            axes[i].set_ylabel(metric)
+
+        for j in range(i + 1, n_rows * n_cols):
+            fig.delaxes(axes[j])
+
+        plt.tight_layout()
+        plt.show()
+
+        if roc_curves:
+            plt.figure(figsize=(8, 6))
+            for model_name, (fpr, tpr, roc_auc) in roc_curves.items():
+                plt.plot(fpr, tpr, label=f"{model_name} (AUC = {roc_auc:.4f})")
+            plt.plot([0, 1], [0, 1], linestyle="--", color="gray")
+            plt.xlabel("False Positive Rate")
+            plt.ylabel("True Positive Rate")
+            plt.title("ROC Curves of All Models")
+            plt.legend()
+            plt.show()

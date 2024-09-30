@@ -64,11 +64,9 @@ class DataLoader:
         if target_column not in self.data.columns:
             raise ValueError(f"Указанный столбец '{target_column}' не найден в данных.")
 
-        # Разделяем данные на признаки (X) и целевую переменную (y)
         X = self.data.drop(columns=[target_column])
         y = self.data[target_column]
 
-        # Разделяем на тренировочный и тестовый наборы
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=test_size, random_state=random_state
         )

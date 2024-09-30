@@ -1,10 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.feature_selection import mutual_info_regression
-from sklearn.cluster import KMeans
-from yellowbrick.cluster import KElbowVisualizer
-import numpy as np
 from IPython.display import display
 
 

@@ -1,14 +1,12 @@
 import re
 import spacy
-import string  # Для работы с пунктуацией
+import string
 from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer
 from tqdm import tqdm
-import pandas as pd
 import nltk
 import contractions
 
-# Загрузка стоп-слов
 nltk.download("stopwords")
 
 
@@ -26,7 +24,6 @@ class TextPreprocessingPipeline:
         self.stop_words = set(stopwords.words("english"))
         self.stemmer = PorterStemmer()
 
-        # Попытка загрузки модели spaCy
         try:
             self.nlp = spacy.load("en_core_web_sm", disable=["parser", "ner"])
         except OSError:
@@ -118,6 +115,6 @@ class TextPreprocessingPipeline:
         pd.DataFrame
             DataFrame с добавленным столбцом обработанного текста.
         """
-        tqdm.pandas()  # Подключаем прогресс-бар для pandas
+        tqdm.pandas()
         df[f"{column_name}_processed"] = df[column_name].progress_apply(self.preprocess)
         return df

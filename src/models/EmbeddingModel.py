@@ -15,8 +15,8 @@ class EmbeddingModel:
             Название предобученной модели эмбеддингов (например, 'word2vec-google-news-300').
         """
         print(f"Загрузка предобученной модели эмбеддингов '{model_name}'...")
-        self.model = api.load(model_name)  # Загрузка модели через gensim.downloader
-        self.vector_size = self.model.vector_size  # Размер вектора эмбеддинга
+        self.model = api.load(model_name)
+        self.vector_size = self.model.vector_size
         print(f"Модель '{model_name}' загружена успешно!")
 
     def text_to_embedding(self, text):
@@ -37,11 +37,9 @@ class EmbeddingModel:
         word_vectors = [self.model[word] for word in words if word in self.model]
 
         if len(word_vectors) > 0:
-            return np.mean(word_vectors, axis=0)  # Усредняем вектора слов
+            return np.mean(word_vectors, axis=0)
         else:
-            return np.zeros(
-                self.vector_size
-            )  # Возвращаем нулевой вектор, если слова отсутствуют в модели
+            return np.zeros(self.vector_size)
 
     def apply_embeddings(self, df, text_column):
         """
@@ -59,6 +57,6 @@ class EmbeddingModel:
         np.array
             Массив эмбеддингов для каждого текста.
         """
-        tqdm.pandas()  # Для отображения прогресса
+        tqdm.pandas()
         embeddings = df[text_column].progress_apply(self.text_to_embedding)
-        return np.stack(embeddings.values)  # Преобразуем серию в массив numpy
+        return np.stack(embeddings.values)
